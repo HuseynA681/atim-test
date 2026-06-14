@@ -410,9 +410,9 @@ export default function App() {
             
             {/* Student Section: Shows Workspace/Exam to students, or User Management summary to Admin */}
             {activeTab === "student-section" && (
-              <div className="space-y-8">
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-8">
                 {currentUser?.role === "admin" || currentUser?.role === "co-admin" || currentUser?.role === "worker" ? (
-                  <div className="p-8 rounded-3xl bg-blue-600/5 border border-blue-500/20 space-y-6">
+                  <div className="p-8 rounded-3xl bg-blue-600/5 border border-blue-500/20 space-y-4">
                     <div className="flex justify-between items-center">
                       <h2 className="text-xl font-bold">Tələbə İdarəetmə</h2>
                       <button className="px-4 py-2 bg-blue-600 text-white rounded-xl text-xs font-bold flex items-center gap-2">
@@ -431,8 +431,8 @@ export default function App() {
                       ))}
                     </div>
                   </div>
-                ) : (
-                  <>
+                ) : currentUser?.role === "student" ? (
+                  <div className="space-y-8">
                     <Workspace
                       courses={courses}
                       onToggleLesson={handleToggleLessonCompleteness}
@@ -445,63 +445,21 @@ export default function App() {
                       onGenerateCertificate={handleGenerateCertificate}
                       darkMode={darkMode}
                     />
-                  </>
-                )}
-              </div>
-            )}
-
-            {/* Corporate/Worker Section */}
-            {activeTab === "corporate-section" && (
-              <div className="space-y-8">
-                {currentUser?.role === "admin" || currentUser?.role === "co-admin" ? (
-                  <div className="p-8 rounded-3xl bg-amber-600/5 border border-amber-500/20 mb-4">
-                    <div className="flex justify-between items-center mb-6">
-                      <h2 className="text-xl font-bold">İşçi İdarəetmə</h2>
-                      <button className="px-4 py-2 bg-amber-600 text-white rounded-xl text-xs font-bold">Yeni İşçi Əlavə Et</button>
-                    </div>
-                    <div className="grid grid-cols-1 gap-2">
-                      {users.filter(u => u.role === "worker").map(worker => (
-                        <div key={worker.username} className="p-4 bg-slate-900/50 rounded-2xl flex justify-between items-center border border-slate-800">
-                          <div>
-                            <div className="font-bold">{worker.fullName}</div>
-                            <div className="text-xs text-slate-500">@{worker.username}</div>
-                          </div>
-                          <button className="text-xs text-amber-400 font-bold hover:underline">Tənzimlə</button>
-                        </div>
-                      ))}
-                    </div>
                   </div>
-                ) : null}
-                <Corporate initialEmployees={CORPORATE_INITIAL_EMPLOYEES} courses={courses} darkMode={darkMode} />
-                <Mentorship mentors={mentors} onUpdateMentors={handleUpdateMentors} darkMode={darkMode} />
-              </div>
+                ) : (
+                  <div className="text-center py-20 text-slate-500">Bu bölməyə baxmaq üçün tələbə girişi lazımdır.</div>
+                )}
+              </motion.div>
             )}
 
-            {/* Worker Section: Meetings */}
-            {activeTab === "worker-section" && (
-              <div className="p-8 rounded-3xl bg-emerald-600/5 border border-emerald-500/20">
-                <h2 className="text-xl font-bold mb-2 flex items-center gap-2">
-                  <Video className="w-6 h-6" /> Görüş və Təlim Platforması
-                </h2>
-                <p className="text-xs text-slate-400 mb-6">İşçi olaraq burada həm fiziki, həm də onlayn görüşlər/təlimlər təyin edə bilərsiniz.</p>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                   <button className="p-6 rounded-2xl bg-slate-900 border border-slate-800 text-left hover:border-blue-500 transition-all group">
-                      <div className="w-10 h-10 rounded-full bg-blue-500/10 flex items-center justify-center mb-4 group-hover:bg-blue-500 text-blue-500 group-hover:text-white transition-all">
-                        <Video className="w-5 h-5" />
-                      </div>
-                      <span className="font-bold block">Yeni Onlayn Görüş</span>
-                      <span className="text-[10px] text-slate-500 italic">Zoom / Teams inteqrasiyası</span>
-                   </button>
-                   <button className="p-6 rounded-2xl bg-slate-900 border border-slate-800 text-left hover:border-emerald-500 transition-all group">
-                      <div className="w-10 h-10 rounded-full bg-emerald-500/10 flex items-center justify-center mb-4 group-hover:bg-emerald-500 text-emerald-500 group-hover:text-white transition-all">
-                        <Building className="w-5 h-5" />
-                      </div>
-                      <span className="font-bold block">Yeni Fiziki Təlim</span>
-                      <span className="text-[10px] text-slate-500 italic">Məkan: ATİM Cənub Korpusu</span>
-                   </button>
-                </div>
-              </div>
-            )}
+            {/* Corporate Section */}
+            {activeTab === "corporate-section" && (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-8">
+                {(currentUser?.role === "admin" || currentUser?.role === "co-admin") && (
+                  <div className="p-8 rounded-3xl bg-amber-600/5 border border-amber-500/20 mb-8">
+                    <h2 className="text-xl font-bold mb-4">Korporativ Müştəri İdarəetmə</h2>
+                    <p className="text-sm text-slate-400">Şirkət hesablarını və işçi siyahılarını buradan idarə edirsiniz.</p>
+                  </div>
                 )}
                 <Corporate initialEmployees={CORPORATE_INITIAL_EMPLOYEES} courses={courses} darkMode={darkMode} />
                 <Mentorship mentors={mentors} onUpdateMentors={handleUpdateMentors} darkMode={darkMode} />

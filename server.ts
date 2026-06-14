@@ -227,6 +227,82 @@ app.get("/api/chat-messages/:groupId", async (req, res) => {
   }
 });
 
+app.delete("/api/users/:username", async (req, res) => {
+  const { username } = req.params;
+  try {
+    await pool.query("DELETE FROM users WHERE username = ?", [username]);
+    res.json({ message: "User deleted" });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Meetings API
+app.get("/api/meetings", async (req, res) => {
+  try {
+    const [rows] = await pool.query("SELECT * FROM meetings ORDER BY start_time ASC");
+    res.json(rows);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post("/api/meetings", async (req, res) => {
+  const { title, type, meeting_link, location, start_time, creator } = req.body;
+  try {
+    await pool.query(
+      "INSERT INTO meetings (title, type, meeting_link, location, start_time, creator) VALUES (?, ?, ?, ?, ?, ?)",
+      [title, type, meeting_link, location, start_time, creator]
+    );
+    res.status(201).json({ message: "Meeting created" });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Calendar API
+app.get("/api/calendar", async (req, res) => {
+  try {
+    const [rows] = await pool.query("SELECT * FROM calendar_events ORDER BY start_time ASC");
+    res.json(rows);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post("/api/calendar", async (req, res) => {
+  const { title, description, start_time, type, target_role } = req.body;
+  try {
+    await pool.query(
+      "INSERT INTO calendar_events (title, description, start_time, type, target_role) VALUES (?, ?, ?, ?, ?)",
+      [title, description, start_time, type, target_role]
+    );
+    res.status(201).json({ message: "Event created" });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Chat API
+app.get("/api/chat-groups", async (req, res) => {
+  try {
+    const [rows] = await pool.query("SELECT * FROM chat_groups");
+    res.json(rows);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get("/api/chat-messages/:groupId", async (req, res) => {
+  const { groupId } = req.params;
+  try {
+    const [rows] = await pool.query("SELECT * FROM chat_messages WHERE group_id = ? ORDER BY timestamp ASC", [groupId]);
+    res.json(rows);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // AI Chat Route
 app.post("/api/chat", async (req, res) => {
   try {
