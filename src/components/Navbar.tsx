@@ -49,7 +49,7 @@ export default function Navbar({
           {/* Logo */}
           <div className="flex-shrink-0 flex items-center">
             <a href="#" onClick={() => setActiveTab("catalog")} className="flex items-center space-x-2">
-              <img className="h-8 w-auto" src={atimLogo} alt="ATIM Logo" />
+              <img className="h-8 w-auto rounded-full" src={atimLogo} alt="ATIM Logo" />
               <span className={`text-xl font-extrabold tracking-tight ${darkMode ? "text-white" : "text-slate-900"}`}>ATİM</span>
             </a>
           </div>
