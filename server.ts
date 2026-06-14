@@ -1,7 +1,7 @@
 import express from "express";
 import path from "path";
 import { createServer as createViteServer } from "vite";
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import dotenv from "dotenv";
 
 dotenv.config();
@@ -12,27 +12,20 @@ app.use(express.json());
 const PORT = 3000;
 
 // Initialize GoogleGenAI client (safe lazy setup)
-let aiClient: GoogleGenAI | null = null;
-function getAiClient(): GoogleGenAI {
+let aiClient: GoogleGenerativeAI | null = null;
+function getAiClient(): GoogleGenerativeAI {
   if (!aiClient) {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
       console.warn("GEMINI_API_KEY is missing! Gemini features will run in mock mode.");
     }
-    aiClient = new GoogleGenAI({
-      apiKey: apiKey || "MOCK_KEY",
-      httpOptions: {
-        headers: {
-          'User-Agent': 'aistudio-build',
-        }
-      }
-    });
+    aiClient = new GoogleGenerativeAI(apiKey || "MOCK_KEY");
   }
   return aiClient;
 }
 
 // Helper to get generative model with system instruction
-function getGenerativeModelWithSystemInstruction(aiClient: GoogleGenAI, systemInstruction: string) {
+function getGenerativeModelWithSystemInstruction(aiClient: GoogleGenerativeAI, systemInstruction: string) {
   return aiClient.getGenerativeModel({
     model: "gemini-1.5-flash", // Use gemini-1.5-flash
     systemInstruction: systemInstruction,
