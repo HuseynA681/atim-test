@@ -19,6 +19,7 @@ import { motion, AnimatePresence } from "motion/react";
 export default function App() {
   const [activeTab, setActiveTab] = useState<string>("catalog");
   const [darkMode, setDarkMode] = useState<boolean>(true);
+
   const [courses, setCourses] = useState<Course[]>(() => {
     const saved = localStorage.getItem("atim_courses_db");
     if (saved) {
@@ -30,28 +31,6 @@ export default function App() {
     }
     return SEEDED_COURSES;
   });
-
-  // Centralized persistence for certificates
-  React.useEffect(() => {
-    localStorage.setItem("atim_certificates_db", JSON.stringify(certificates));
-  }, [certificates]);
-
-  // Centralized persistence for courses
-  React.useEffect(() => {
-    localStorage.setItem("atim_courses_db", JSON.stringify(courses));
-  }, [courses]);
-
-  const handleCreateCourse = (newCourse: Course) => {
-    setCourses(prev => [...prev, newCourse]);
-  };
-
-  const handleUpdateCourse = (updatedCourse: Course) => {
-    setCourses(prev => prev.map((c) => (c.id === updatedCourse.id ? updatedCourse : c)));
-  };
-
-  const handleDeleteCourse = (courseId: string) => {
-    setCourses(prev => prev.filter((c) => c.id !== courseId));
-  };
 
   const [selectedCourseDetail, setSelectedCourseDetail] = useState<Course | null>(null);
 
@@ -80,11 +59,6 @@ export default function App() {
     ];
   });
 
-  // Centralized persistence for users
-  React.useEffect(() => {
-    localStorage.setItem("atim_users_db", JSON.stringify(users));
-  }, [users]);
-
   // Track currently active session
   const [currentUser, setCurrentUser] = useState<User | null>(() => {
     const saved = localStorage.getItem("atim_loggedInUser");
@@ -98,7 +72,60 @@ export default function App() {
     return null;
   });
 
-  // Centralized persistence for currentUser
+  // Load and manage mentors database dynamically with persistence
+  const [mentors, setMentors] = useState<Mentor[]>(() => {
+    const saved = localStorage.getItem("atim_mentors_db");
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    return SEEDED_MENTORS;
+  });
+
+  // Pre-load default state certificates
+  const [certificates, setCertificates] = useState<Certificate[]>(() => {
+    const saved = localStorage.getItem("atim_certificates_db");
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    return [];
+  });
+
+  // Load and manage course registration applications
+  const [applications, setApplications] = useState<CourseApplication[]>(() => {
+    const saved = localStorage.getItem("atim_applications_db");
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    return [];
+  });
+
+  const [enrollModalCourseId, setEnrollModalCourseId] = useState<string | null>(null);
+
+  // Centralized persistence Effects
+  React.useEffect(() => {
+    localStorage.setItem("atim_certificates_db", JSON.stringify(certificates));
+  }, [certificates]);
+
+  React.useEffect(() => {
+    localStorage.setItem("atim_courses_db", JSON.stringify(courses));
+  }, [courses]);
+
+  React.useEffect(() => {
+    localStorage.setItem("atim_users_db", JSON.stringify(users));
+  }, [users]);
+
   React.useEffect(() => {
     if (currentUser) {
       localStorage.setItem("atim_loggedInUser", JSON.stringify(currentUser));
@@ -107,7 +134,27 @@ export default function App() {
     }
   }, [currentUser]);
 
-  // Persistent user actions
+  React.useEffect(() => {
+    localStorage.setItem("atim_mentors_db", JSON.stringify(mentors));
+  }, [mentors]);
+
+  React.useEffect(() => {
+    localStorage.setItem("atim_applications_db", JSON.stringify(applications));
+  }, [applications]);
+
+  // Persistent Handlers
+  const handleCreateCourse = (newCourse: Course) => {
+    setCourses(prev => [...prev, newCourse]);
+  };
+
+  const handleUpdateCourse = (updatedCourse: Course) => {
+    setCourses(prev => prev.map((c) => (c.id === updatedCourse.id ? updatedCourse : c)));
+  };
+
+  const handleDeleteCourse = (courseId: string) => {
+    setCourses(prev => prev.filter((c) => c.id !== courseId));
+  };
+
   const handleCreateUser = (username: string, fullName: string, role: "admin" | "student" | "corporate") => {
     const exists = users.some((u) => u.username === username);
     if (exists) return false;
@@ -189,41 +236,6 @@ export default function App() {
     setActiveTab("catalog");
     setCurrentUser(null);
   };
-
-  // Pre-load default state certificates
-  const [certificates, setCertificates] = useState<Certificate[]>(() => {
-    const saved = localStorage.getItem("atim_certificates_db");
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (e) {
-        console.error(e);
-      }
-    }
-    return [
-      // ... initial seeded certificates ...
-    ];
-  });
-
-  // Load and manage course registration applications
-  const [applications, setApplications] = useState<CourseApplication[]>(() => {
-    const saved = localStorage.getItem("atim_applications_db");
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (e) {
-        console.error(e);
-      }
-    }
-    return [];
-  });
-
-  // Centralized persistence for applications
-  React.useEffect(() => {
-    localStorage.setItem("atim_applications_db", JSON.stringify(applications));
-  }, [applications]);
-
-  const [enrollModalCourseId, setEnrollModalCourseId] = useState<string | null>(null);
 
   // Handle student course enrollment application submission
   const handleEnrollCourse = (courseId: string, motivation: string) => {
