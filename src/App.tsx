@@ -13,7 +13,7 @@ import Login from "./components/Login";
 
 import { SEEDED_COURSES, SEEDED_MENTORS, CORPORATE_INITIAL_EMPLOYEES, SEEDED_JOBS } from "./data";
 import { Course, Certificate, User, Mentor, CourseApplication } from "./types";
-import { Star, Clock, Award, BookOpen, AlertCircle, Sparkles, Check, X, Shield, Video, Calendar as CalendarIcon, MessageSquare, Send, Plus, Building } from "lucide-react";
+import { Star, Clock, Award, BookOpen, AlertCircle, Sparkles, Check, X, Shield, Video, Calendar as CalendarIcon, MessageSquare, Send, Plus, Building, Users } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 
 export default function App() {
@@ -38,6 +38,7 @@ export default function App() {
 
   // Load and manage registered users database
   const [users, setUsers] = useState<User[]>([]);
+  const [meetings, setMeetings] = useState<any[]>([]);
   const [adminAuthInput, setAdminAuthInput] = useState("");
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState<boolean>(() => {
     return localStorage.getItem("atim_admin_auth") === "true";
@@ -52,6 +53,14 @@ export default function App() {
         if (Array.isArray(data)) setUsers(data);
       })
       .catch(err => console.error("Failed to fetch users:", err));
+  }, []);
+
+  // Load meetings from MySQL on mount
+  React.useEffect(() => {
+    fetch("/api/meetings")
+      .then(res => (res.ok ? res.json() : []))
+      .then(data => setMeetings(data))
+      .catch(err => console.error("Failed to fetch meetings:", err));
   }, []);
 
   // Track currently active session
@@ -215,6 +224,28 @@ export default function App() {
 
   const handleUpdateMentors = (updatedMentors: Mentor[]) => {
     setMentors(updatedMentors);
+  };
+
+  const handleCreateMeeting = (title: string, type: "online" | "physical") => {
+    if (!currentUser) return;
+    const meetingData = {
+      title,
+      type,
+      meeting_link: type === "online" ? "https://zoom.us/j/atim-meeting" : null,
+      location: type === "physical" ? "ATİM Cənub Korpusu" : null,
+      start_time: new Date().toLocaleString("az-AZ"),
+      creator: currentUser.username
+    };
+
+    fetch("/api/meetings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(meetingData)
+    }).then(res => {
+      if (res.ok) {
+        fetch("/api/meetings").then(r => r.json()).then(data => setMeetings(data));
+      }
+    });
   };
 
   const handleLogout = () => {
@@ -414,8 +445,11 @@ export default function App() {
                 {currentUser?.role === "admin" || currentUser?.role === "co-admin" || currentUser?.role === "worker" ? (
                   <div className="p-8 rounded-3xl bg-blue-600/5 border border-blue-500/20 space-y-4">
                     <div className="flex justify-between items-center">
-                      <h2 className="text-xl font-bold">Tələbə İdarəetmə</h2>
-                      <button className="px-4 py-2 bg-blue-600 text-white rounded-xl text-xs font-bold flex items-center gap-2">
+                      <h2 className="text-xl font-bold text-slate-100">Tələbə İdarəetmə</h2>
+                      <button 
+                        onClick={() => setActiveTab("admin")}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-xl text-xs font-bold flex items-center gap-2"
+                      >
                         <Plus className="w-4 h-4" /> Yeni Tələbə Əlavə Et
                       </button>
                     </div>
@@ -426,7 +460,12 @@ export default function App() {
                             <div className="font-bold">{student.fullName}</div>
                             <div className="text-xs text-slate-500">@{student.username}</div>
                           </div>
-                          <button className="text-xs text-blue-400 font-bold hover:underline">Profilə bax / Redaktə et</button>
+                          <button 
+                            onClick={() => setActiveTab("admin")}
+                            className="text-xs text-blue-400 font-bold hover:underline"
+                          >
+                            Profilə bax / Redaktə et
+                          </button>
                         </div>
                       ))}
                     </div>
@@ -474,14 +513,20 @@ export default function App() {
                 </h2>
                 <p className="text-xs text-slate-400 mb-6">İşçi olaraq burada həm fiziki, həm də onlayn görüşlər/təlimlər təyin edə bilərsiniz.</p>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                   <button className="p-6 rounded-2xl bg-slate-900 border border-slate-800 text-left hover:border-blue-500 transition-all group">
+                   <button 
+                     onClick={() => handleCreateMeeting("Yeni Onlayn Görüş", "online")}
+                     className="p-6 rounded-2xl bg-slate-900 border border-slate-800 text-left hover:border-blue-500 transition-all group"
+                   >
                       <div className="w-10 h-10 rounded-full bg-blue-500/10 flex items-center justify-center mb-4 group-hover:bg-blue-500 text-blue-500 group-hover:text-white transition-all">
                         <Video className="w-5 h-5" />
                       </div>
                       <span className="font-bold block">Yeni Onlayn Görüş</span>
                       <span className="text-[10px] text-slate-500 italic">Zoom / Teams inteqrasiyası</span>
                    </button>
-                   <button className="p-6 rounded-2xl bg-slate-900 border border-slate-800 text-left hover:border-emerald-500 transition-all group">
+                   <button 
+                     onClick={() => handleCreateMeeting("Yeni Fiziki Təlim", "physical")}
+                     className="p-6 rounded-2xl bg-slate-900 border border-slate-800 text-left hover:border-emerald-500 transition-all group"
+                   >
                       <div className="w-10 h-10 rounded-full bg-emerald-500/10 flex items-center justify-center mb-4 group-hover:bg-emerald-500 text-emerald-500 group-hover:text-white transition-all">
                         <Building className="w-5 h-5" />
                       </div>
@@ -489,6 +534,28 @@ export default function App() {
                       <span className="text-[10px] text-slate-500 italic">Məkan: ATİM Cənub Korpusu</span>
                    </button>
                 </div>
+
+                {meetings.length > 0 && (
+                  <div className="mt-12 space-y-4">
+                    <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider">Aktiv Görüşlər ({meetings.length})</h3>
+                    <div className="grid grid-cols-1 gap-3">
+                      {meetings.map((m: any) => (
+                        <div key={m.id} className="p-4 bg-slate-900/40 border border-slate-800 rounded-2xl flex justify-between items-center">
+                          <div className="flex items-center gap-4">
+                            <div className={`p-2 rounded-lg ${m.type === 'online' ? 'bg-blue-500/10 text-blue-400' : 'bg-emerald-500/10 text-emerald-400'}`}>
+                              {m.type === 'online' ? <Video className="w-4 h-4" /> : <Building className="w-4 h-4" />}
+                            </div>
+                            <div>
+                              <div className="font-bold text-sm">{m.title}</div>
+                              <div className="text-[10px] text-slate-500">{m.start_time} • {m.creator} tərəfindən</div>
+                            </div>
+                          </div>
+                          <button className="text-[10px] font-bold text-blue-400 hover:underline">Detallar</button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </motion.div>
             )}
 
