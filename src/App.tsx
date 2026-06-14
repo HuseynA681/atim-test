@@ -162,7 +162,7 @@ export default function App() {
     const newUser: User = {
       username,
       fullName,
-      role,
+      role: role as any,
       createdAt
     };
 
@@ -403,43 +403,57 @@ export default function App() {
               />
             )}
             
-            {/* New Student Section */}
+            {/* Student Section: Shows Workspace/Exam to students, or User Management summary to Admin */}
             {activeTab === "student-section" && (
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                transition={{ duration: 0.2 }}
-                className="space-y-8" // Add spacing between components
-              >
-                <Workspace
-                  courses={courses}
-                  onToggleLesson={handleToggleLessonCompleteness}
-                  onSaveNotes={handleSaveCourseNotes}
-                  onGoToExam={handleLaunchExamFromCourse}
-                  darkMode={darkMode}
-                />
-                <Exam
-                  enrolledCourses={courses.filter((c) => c.isEnrolled)}
-                  onGenerateCertificate={handleGenerateCertificate}
-                  darkMode={darkMode}
-                />
-              </motion.div>
+              <div className="space-y-8">
+                {currentUser?.role === "admin" ? (
+                  <div className="p-8 rounded-3xl bg-blue-600/5 border border-blue-500/20">
+                    <h2 className="text-xl font-bold mb-4">Tələbə İdarəetmə</h2>
+                    <p className="text-sm text-slate-400">Siz hal-hazırda admin kimi tələbə bazasına baxırsınız. Ətraflı tənzimləmə üçün Admin Panelinə keçid edin.</p>
+                  </div>
+                ) : (
+                  <>
+                    <Workspace
+                      courses={courses}
+                      onToggleLesson={handleToggleLessonCompleteness}
+                      onSaveNotes={handleSaveCourseNotes}
+                      onGoToExam={handleLaunchExamFromCourse}
+                      darkMode={darkMode}
+                    />
+                    <Exam
+                      enrolledCourses={courses.filter((c) => c.isEnrolled)}
+                      onGenerateCertificate={handleGenerateCertificate}
+                      darkMode={darkMode}
+                    />
+                  </>
+                )}
+              </div>
             )}
 
-            {/* New Corporate Section */}
-            {activeTab === "corporate-section" && (
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                transition={{ duration: 0.2 }}
-                className="space-y-8" // Add spacing between components
-              >
+            {/* Worker Section: Meetings and Corporate tools */}
+            {(activeTab === "corporate-section" || activeTab === "worker-section") && (
+              <div className="space-y-8">
+                {currentUser?.role === "worker" || currentUser?.role === "admin" ? (
+                  <div className="p-8 rounded-3xl bg-emerald-600/5 border border-emerald-500/20">
+                    <h2 className="text-xl font-bold mb-2 flex items-center gap-2">
+                      <Video className="w-6 h-6" /> Görüş Platforması
+                    </h2>
+                    <p className="text-xs text-slate-400 mb-6">İşçi olaraq burada onlayn və fiziki görüşlər təyin edə bilərsiniz.</p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                       <button className="p-6 rounded-2xl bg-slate-800 border border-slate-700 text-left hover:border-blue-500 transition-all">
+                          <span className="font-bold block">Yeni Onlayn Görüş</span>
+                          <span className="text-[10px] text-slate-500 italic">Zoom / Google Meet inteqrasiyası</span>
+                       </button>
+                       <button className="p-6 rounded-2xl bg-slate-800 border border-slate-700 text-left hover:border-blue-500 transition-all">
+                          <span className="font-bold block">Yeni Fiziki Təlim</span>
+                          <span className="text-[10px] text-slate-500 italic">Məkan: ATİM Cənub Korpusu</span>
+                       </button>
+                    </div>
+                  </div>
+                ) : null}
                 <Corporate initialEmployees={CORPORATE_INITIAL_EMPLOYEES} courses={courses} darkMode={darkMode} />
                 <Mentorship mentors={mentors} onUpdateMentors={handleUpdateMentors} darkMode={darkMode} />
-                <Career vacancies={SEEDED_JOBS} darkMode={darkMode} />
-              </motion.div>
+              </div>
             )}
 
             {activeTab === "admin" && (

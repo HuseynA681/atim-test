@@ -26,6 +26,8 @@ interface AdminPanelProps {
   onRejectApplication?: (appId: string) => void;
 }
 
+type AdminSection = "users" | "mentors" | "courses" | "applications";
+
 export default function AdminPanel({ 
   users, 
   onCreateUser, 
@@ -45,7 +47,11 @@ export default function AdminPanel({
   onRejectApplication = () => {}
 }: AdminPanelProps) {
   // Navigation tabs for Admin Panel
-  const [activeAdminSec, setActiveAdminSec] = useState<"users" | "mentors" | "courses" | "applications">("users");
+  const isSuperAdmin = currentUser.role === "admin";
+  
+  const [activeAdminSec, setActiveAdminSec] = useState<AdminSection>(
+    isSuperAdmin ? "users" : "courses"
+  );
 
   // Reusable Sandbox-friendly Custom Confirmation Dialog Modal State
   const [confirmModal, setConfirmModal] = useState<{
@@ -400,19 +406,21 @@ export default function AdminPanel({
 
         {/* Section select buttons */}
         <div className="flex flex-wrap gap-1 bg-slate-500/10 p-1 rounded-xl shrink-0">
-          <button
-            onClick={() => setActiveAdminSec("users")}
-            className={`px-3 py-2 rounded-lg text-[11px] font-bold transition-all flex items-center space-x-1 ${
-              activeAdminSec === "users"
-                ? darkMode
-                  ? "bg-[#1e294b] text-[#00bfff] shadow-sm"
-                  : "bg-white text-blue-600 shadow-sm"
-                : "text-slate-400 hover:text-slate-250"
-            }`}
-          >
-            <Users className="w-3.5 h-3.5" />
-            <span>Hesablar ({users.length})</span>
-          </button>
+          {isSuperAdmin && (
+            <button
+              onClick={() => setActiveAdminSec("users")}
+              className={`px-3 py-2 rounded-lg text-[11px] font-bold transition-all flex items-center space-x-1 ${
+                activeAdminSec === "users"
+                  ? darkMode
+                    ? "bg-[#1e294b] text-[#00bfff] shadow-sm"
+                    : "bg-white text-blue-600 shadow-sm"
+                  : "text-slate-400 hover:text-slate-250"
+              }`}
+            >
+              <Users className="w-3.5 h-3.5" />
+              <span>Hesablar ({users.length})</span>
+            </button>
+          )}
           
           <button
             onClick={() => setActiveAdminSec("courses")}
@@ -460,7 +468,7 @@ export default function AdminPanel({
 
       <AnimatePresence mode="wait">
         {/* USERS MANAGEMENT SECTION */}
-        {activeAdminSec === "users" && (
+        {activeAdminSec === "users" && isSuperAdmin && (
           <motion.div
             key="sec-users"
             initial={{ opacity: 0, y: 10 }}
@@ -554,7 +562,9 @@ export default function AdminPanel({
                       }`}
                     >
                       <option value="student">Tələbə / Mütəxəssis (Student)</option>
+                      <option value="worker">İşçi (Worker)</option>
                       <option value="corporate">Korporativ Partnyor (Corporate)</option>
+                      <option value="co-admin">Köməkçi Administrator (Co-Admin)</option>
                       <option value="admin">Sistem Administratoru (Admin)</option>
                     </select>
                   </div>
