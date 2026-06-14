@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Menu, X, BookOpen, Briefcase, Award, Users, Building, GraduationCap, Sun, Moon, LogOut, User as UserIcon, Settings, CheckCircle } from "lucide-react";
+import { Menu, X, BookOpen, Briefcase, Award, Users, Building, GraduationCap, Sun, Moon, LogOut, User as UserIcon, Settings, CheckCircle, Calendar, MessageSquare, Video } from "lucide-react";
 import { User } from "../types"; // Assuming types.ts is in the parent directory
 import AtimLogo from "./AtimLogo";
 
@@ -10,6 +10,7 @@ interface NavbarProps {
   setDarkMode: (mode: boolean) => void;
   currentUser: User | null;
   onLogout: () => void;
+  onOpenLogin: () => void;
 }
 
 export default function Navbar({
@@ -19,18 +20,18 @@ export default function Navbar({
   setDarkMode,
   currentUser,
   onLogout,
+  onOpenLogin,
 }: NavbarProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const navItems = [
-    { id: "catalog", label: "Kataloq", icon: BookOpen, roles: ["admin", "student", "corporate", null] }, // null for not logged in
-    { id: "workspace", label: "İş Sahəsi", icon: Briefcase, roles: ["student"] },
-    { id: "exam", label: "İmtahan", icon: Award, roles: ["student"] },
-    { id: "verify", label: "Doğrulama", icon: CheckCircle, roles: ["admin", "student", "corporate", null] },
-    { id: "corporate", label: "Korporativ", icon: Building, roles: ["admin", "corporate"] },
-    { id: "mentorship", label: "Mentorluq", icon: Users, roles: ["admin", "student"] },
-    { id: "career", label: "Karyera", icon: GraduationCap, roles: ["admin", "student"] },
-    { id: "admin", label: "Admin Panel", icon: Settings, roles: ["admin"] },
+    { id: "catalog", label: "Kataloq", icon: BookOpen, roles: ["admin", "co-admin", "student", "corporate", "worker", null] },
+    { id: "student-section", label: "Tələbələr", icon: GraduationCap, roles: ["admin", "co-admin", "student"] },
+    { id: "corporate-section", label: "İşçilər", icon: Building, roles: ["admin", "co-admin", "corporate"] },
+    { id: "worker-section", label: "İşçi Paneli", icon: Briefcase, roles: ["admin", "worker"] },
+    { id: "calendar", label: "Təqvim", icon: Calendar, roles: ["admin", "co-admin", "student", "corporate", "worker"] },
+    { id: "chat", label: "Müzakirə", icon: MessageSquare, roles: ["admin", "co-admin", "student", "corporate", "worker"] },
+    { id: "admin", label: "Admin", icon: Settings, roles: ["admin", "co-admin"] },
   ];
 
   const filteredNavItems = navItems.filter(item => {
@@ -93,6 +94,14 @@ export default function Navbar({
             >
               {darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
             </button>
+            {!currentUser && (
+              <button
+                onClick={onOpenLogin}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-xl transition-all"
+              >
+                Giriş
+              </button>
+            )}
             {currentUser && (
               <button
                 onClick={onLogout}

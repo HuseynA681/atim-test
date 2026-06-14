@@ -8,8 +8,8 @@ import Corporate from "./components/Corporate";
 import Mentorship from "./components/Mentorship";
 import Career from "./components/Career";
 import AdminPanel from "./components/AdminPanel";
-import Login from "./components/Login";
 import AIChatBot from "./components/AIChatBot";
+import Login from "./components/Login";
 
 import { SEEDED_COURSES, SEEDED_MENTORS, CORPORATE_INITIAL_EMPLOYEES, SEEDED_JOBS } from "./data";
 import { Course, Certificate, User, Mentor, CourseApplication } from "./types";
@@ -36,11 +36,14 @@ export default function App() {
 
   // Load and manage registered users database
   const [users, setUsers] = useState<User[]>([]);
+  const [adminAuthInput, setAdminAuthInput] = useState("");
+  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
+  const [showLoginModal, setShowLoginModal] = useState(false);
 
   // Load users from MySQL on mount
   React.useEffect(() => {
     fetch("/api/users")
-      .then(res => res.json())
+      .then(res => (res.ok ? res.json() : []))
       .then(data => {
         if (Array.isArray(data)) setUsers(data);
       })
@@ -48,17 +51,7 @@ export default function App() {
   }, []);
 
   // Track currently active session
-  const [currentUser, setCurrentUser] = useState<User | null>(() => {
-    const saved = localStorage.getItem("atim_loggedInUser");
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (e) {
-        console.error(e);
-      }
-    }
-    return null;
-  });
+  const [currentUser, setCurrentUser] = useState<User | null>(null); // Default to null (guest)
 
   // Load and manage mentors database dynamically with persistence
   const [mentors, setMentors] = useState<Mentor[]>(() => {
@@ -139,7 +132,7 @@ export default function App() {
     setCourses(prev => prev.filter((c) => c.id !== courseId));
   };
 
-  const handleCreateUser = (username: string, fullName: string, role: "admin" | "student" | "corporate") => {
+  const handleCreateUser = (username: string, fullName: string, role: "admin" | "co-admin" | "student" | "corporate" | "worker") => {
     const exists = users.some((u) => u.username === username);
     if (exists) return false;
     
@@ -197,18 +190,15 @@ export default function App() {
     setMentors(updatedMentors);
   };
 
-  const handleLoginSuccess = (user: User) => {
-    if (user.role === "admin") {
-      setActiveTab("admin");
-    } else {
-      setActiveTab("catalog");
-    }
-    setCurrentUser(user);
-  };
-
   const handleLogout = () => {
     setActiveTab("catalog");
     setCurrentUser(null);
+    setIsAdminAuthenticated(false);
+  };
+
+  const handleLoginSuccess = (user: User) => {
+    setCurrentUser(user);
+    setShowLoginModal(false);
   };
 
   // Handle student course enrollment application submission
@@ -339,16 +329,15 @@ export default function App() {
     setActiveTab("exam");
   };
 
-  if (!currentUser) {
-    return (
-      <Login
-        users={users}
-        onLoginSuccess={handleLoginSuccess}
-        onUpdateUserPassword={handleUpdatePassword}
-        darkMode={darkMode}
-      />
-    );
-  }
+  const handleAdminAuth = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (adminAuthInput === "admin123") { // Admin panel üçün təyin edilən şifrə
+      setIsAdminAuthenticated(true);
+      setAdminAuthInput("");
+    } else {
+      alert("Yanlış şifrə!");
+    }
+  };
 
   return (
     <div className={`min-h-screen font-sans ${darkMode ? "bg-[#080d1a] text-slate-100" : "bg-slate-50 text-slate-900"} transition-colors duration-200 flex flex-col`}>
@@ -360,6 +349,7 @@ export default function App() {
         setDarkMode={setDarkMode}
         currentUser={currentUser}
         onLogout={handleLogout}
+        onOpenLogin={() => setShowLoginModal(true)}
       />
 
       {/* Main Body */}
@@ -384,77 +374,125 @@ export default function App() {
               />
             )}
 
-            {activeTab === "workspace" && (
-              <Workspace
-                courses={courses}
-                onToggleLesson={handleToggleLessonCompleteness}
-                onSaveNotes={handleSaveCourseNotes}
-                onGoToExam={handleLaunchExamFromCourse}
-                darkMode={darkMode}
-              />
-            )}
-
-            {activeTab === "exam" && (
-              <Exam
-                enrolledCourses={courses.filter((c) => c.isEnrolled)}
-                onGenerateCertificate={handleGenerateCertificate}
-                darkMode={darkMode}
-              />
-            )}
-
             {activeTab === "verify" && (
               <Verification
                 certificates={certificates}
                 darkMode={darkMode}
               />
             )}
-
-            {activeTab === "corporate" && (
-              <Corporate
-                initialEmployees={CORPORATE_INITIAL_EMPLOYEES}
-                courses={courses}
-                darkMode={darkMode}
-              />
+            
+            {/* New Student Section */}
+            {activeTab === "student-section" && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.2 }}
+                className="space-y-8" // Add spacing between components
+              >
+                <Workspace
+                  courses={courses}
+                  onToggleLesson={handleToggleLessonCompleteness}
+                  onSaveNotes={handleSaveCourseNotes}
+                  onGoToExam={handleLaunchExamFromCourse}
+                  darkMode={darkMode}
+                />
+                <Exam
+                  enrolledCourses={courses.filter((c) => c.isEnrolled)}
+                  onGenerateCertificate={handleGenerateCertificate}
+                  darkMode={darkMode}
+                />
+              </motion.div>
             )}
 
-            {activeTab === "mentorship" && (
-              <Mentorship
-                mentors={mentors}
-                onUpdateMentors={handleUpdateMentors}
-                darkMode={darkMode}
-              />
+            {/* New Corporate Section */}
+            {activeTab === "corporate-section" && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.2 }}
+                className="space-y-8" // Add spacing between components
+              >
+                <Corporate initialEmployees={CORPORATE_INITIAL_EMPLOYEES} courses={courses} darkMode={darkMode} />
+                <Mentorship mentors={mentors} onUpdateMentors={handleUpdateMentors} darkMode={darkMode} />
+                <Career vacancies={SEEDED_JOBS} darkMode={darkMode} />
+              </motion.div>
             )}
 
-            {activeTab === "career" && (
-              <Career
-                vacancies={SEEDED_JOBS}
-                darkMode={darkMode}
-              />
-            )}
-
-            {activeTab === "admin" && currentUser.role === "admin" && (
-              <AdminPanel
-                users={users}
-                onCreateUser={handleCreateUser}
-                onDeleteUser={handleDeleteUser}
-                onResetPassword={handleResetPassword}
-                onSetPassword={handleUpdatePassword}
-                mentors={mentors}
-                onUpdateMentors={handleUpdateMentors}
-                darkMode={darkMode}
-                currentUser={currentUser}
-                courses={courses}
-                onCreateCourse={handleCreateCourse}
-                onUpdateCourse={handleUpdateCourse}
-                onDeleteCourse={handleDeleteCourse}
-                applications={applications}
-                onApproveApplication={handleApproveApplication}
-                onRejectApplication={handleRejectApplication}
-              />
+            {activeTab === "admin" && (
+              !isAdminAuthenticated ? (
+                <div className="max-w-md mx-auto mt-20 p-8 rounded-3xl border border-slate-800 bg-[#0b1226] text-center space-y-6">
+                  <div className="w-16 h-16 bg-blue-600/10 rounded-full flex items-center justify-center mx-auto">
+                    <Shield className="w-8 h-8 text-blue-500" />
+                  </div>
+                  <div className="space-y-2">
+                    <h2 className="text-xl font-bold">Admin Girişi</h2>
+                    <p className="text-xs text-slate-400">Bu bölməyə daxil olmaq üçün inzibatçı şifrəsini daxil edin.</p>
+                  </div>
+                  <form onSubmit={handleAdminAuth} className="space-y-4">
+                    <input
+                      type="password"
+                      placeholder="Admin şifrəsi"
+                      value={adminAuthInput}
+                      onChange={(e) => setAdminAuthInput(e.target.value)}
+                      className="w-full p-3 rounded-xl bg-slate-900 border border-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      autoFocus
+                    />
+                    <button
+                      type="submit"
+                      className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition-all"
+                    >
+                      Giriş Et
+                    </button>
+                  </form>
+                </div>
+              ) : (
+                <AdminPanel
+                  users={users}
+                  onCreateUser={handleCreateUser}
+                  onDeleteUser={handleDeleteUser}
+                  onResetPassword={handleResetPassword}
+                  onSetPassword={handleUpdatePassword}
+                  mentors={mentors}
+                  onUpdateMentors={handleUpdateMentors} // Keep this, it's for admin panel
+                  darkMode={darkMode}
+                  currentUser={currentUser || { username: 'admin', fullName: 'Sistem Admin', role: 'admin' }}
+                  courses={courses}
+                  onCreateCourse={handleCreateCourse}
+                  onUpdateCourse={handleUpdateCourse}
+                  onDeleteCourse={handleDeleteCourse}
+                  applications={applications}
+                  onApproveApplication={handleApproveApplication}
+                  onRejectApplication={handleRejectApplication}
+                />
+              )
             )}
           </motion.div>
         </AnimatePresence>
       </main>
+
+      {/* Login Modal Overlay */}
+      <AnimatePresence>
+        {showLoginModal && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm">
+            <div className="w-full max-w-md p-4">
+              <Login 
+                users={users} 
+                onLoginSuccess={handleLoginSuccess} 
+                onUpdateUserPassword={handleUpdatePassword} 
+                darkMode={darkMode} 
+              />
+              <button 
+                onClick={() => setShowLoginModal(false)}
+                className="absolute top-6 right-6 text-white hover:text-slate-300"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* Course Detail Modal Drawer */}
       <AnimatePresence>
@@ -686,7 +724,7 @@ export default function App() {
       <AIChatBot darkMode={darkMode} />
 
       {/* Subtle brand footer */}
-      <footer className={`py-6 border-t text-center text-xs text-slate-500 mt-20 ${
+      <footer className={`py-6 border-t text-center text-xs text-slate-500 mt-8 ${
         darkMode ? "bg-[#040811] border-slate-800" : "bg-white border-slate-105"
       }`}>
         <p>© 2026 ATİM (Skills, Training &amp; Certification Ecosystem). Bütün hüquqlar SOCAR və ATİM çərçivəsində qorunur.</p>

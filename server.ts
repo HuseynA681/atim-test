@@ -35,6 +35,48 @@ async function initDb() {
         createdAt VARCHAR(50)
       )
     `);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS calendar_events (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        title VARCHAR(255) NOT NULL,
+        description TEXT,
+        start_time DATETIME NOT NULL,
+        end_time DATETIME,
+        type VARCHAR(50),
+        target_role VARCHAR(50)
+      )
+    `);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS chat_groups (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        created_by VARCHAR(255)
+      )
+    `);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS chat_messages (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        group_id INT,
+        sender VARCHAR(255),
+        text TEXT,
+        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS meetings (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        title VARCHAR(255) NOT NULL,
+        type ENUM('online', 'physical') DEFAULT 'physical',
+        meeting_link VARCHAR(500),
+        location VARCHAR(255),
+        start_time DATETIME,
+        creator VARCHAR(255)
+      )
+    `);
     
     // Seed admin if not exists
     const [rows]: any = await pool.query("SELECT * FROM users WHERE username = 'admin'");
