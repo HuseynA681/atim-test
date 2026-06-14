@@ -9,7 +9,7 @@ interface AtimLogoProps {
 
 export default function AtimLogo({ className = "", variant = "full", size = "md", darkMode = true }: AtimLogoProps) {
   // Use Vite's dynamic asset URL resolution to guarantee error-free import without TypeScript type definitions for JPGs
-  const logoUrl = new URL("https://atim-3zls.onrender.com/assets/atim.png", import.meta.url).href;
+  const logoUrl = new URL("https://github.com/HuseynA681/atim/assets/atim.png", import.meta.url).href;
 
   // Sizing definitions to enforce perfect circles (square bounding boxes)
   const sizeClasses = {
