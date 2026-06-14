@@ -1,4 +1,5 @@
 import React from "react";
+import logoUrl from "../assets/atim.png";
 
 interface AtimLogoProps {
   className?: string;
@@ -8,8 +9,6 @@ interface AtimLogoProps {
 }
 
 export default function AtimLogo({ className = "", variant = "full", size = "md", darkMode = true }: AtimLogoProps) {
-  const logoUrl = "/assets/atim.png";
-
   // Sizing definitions to enforce perfect circles (square bounding boxes)
   const sizeClasses = {
     sm: "w-11 h-11",
@@ -58,7 +57,7 @@ export default function AtimLogo({ className = "", variant = "full", size = "md"
   // Full Brand Logo presentation
   return (
     <div className={`flex flex-col items-center text-center ${className}`}>
-      <div className={`${sizeClasses[size]} aspect-square overflow-hidden rounded-full shadow-lg shadow-black/10 border-2 border-teal-500/10 animate-fade-in relative`}>
+      <div className={`${sizeClasses[size]} aspect-square overflow-hidden rounded-full shadow-lg shadow-black/10 border-2 border-teal-500/10 relative`}>
         <img
           src={logoUrl}
           alt="ATİM Azərbaycan Təlim və İnnovasiyalar Mərkəzi"
