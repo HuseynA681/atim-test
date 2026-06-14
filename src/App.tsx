@@ -13,7 +13,7 @@ import Login from "./components/Login";
 
 import { SEEDED_COURSES, SEEDED_MENTORS, CORPORATE_INITIAL_EMPLOYEES, SEEDED_JOBS } from "./data";
 import { Course, Certificate, User, Mentor, CourseApplication } from "./types";
-import { Star, Clock, Award, BookOpen, AlertCircle, Sparkles, Check, X, Shield, Video, Calendar as CalendarIcon, MessageSquare, Send, Plus, Building, Users } from "lucide-react";
+import { Star, Clock, Award, BookOpen, AlertCircle, Sparkles, Check, X, Shield, Video, Calendar as CalendarIcon, MessageSquare, Send, Plus, Building, Users, Trash2 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 
 export default function App() {
@@ -39,6 +39,9 @@ export default function App() {
   // Load and manage registered users database
   const [users, setUsers] = useState<User[]>([]);
   const [meetings, setMeetings] = useState<any[]>([]);
+  const [calendarEvents, setCalendarEvents] = useState<any[]>([]);
+  const [chatGroups, setChatGroups] = useState<any[]>([]);
+  const [chatMessages, setChatMessages] = useState<any[]>([]);
   const [adminAuthInput, setAdminAuthInput] = useState("");
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState<boolean>(() => {
     return localStorage.getItem("atim_admin_auth") === "true";
@@ -61,6 +64,22 @@ export default function App() {
       .then(res => (res.ok ? res.json() : []))
       .then(data => setMeetings(data))
       .catch(err => console.error("Failed to fetch meetings:", err));
+  }, []);
+
+  // Load calendar events from MySQL on mount
+  React.useEffect(() => {
+    fetch("/api/calendar")
+      .then(res => (res.ok ? res.json() : []))
+      .then(data => setCalendarEvents(data))
+      .catch(err => console.error("Failed to fetch calendar events:", err));
+  }, []);
+
+  // Load chat groups from MySQL on mount
+  React.useEffect(() => {
+    fetch("/api/chat-groups")
+      .then(res => (res.ok ? res.json() : []))
+      .then(data => setChatGroups(data))
+      .catch(err => console.error("Failed to fetch chat groups:", err));
   }, []);
 
   // Track currently active session
@@ -246,6 +265,74 @@ export default function App() {
         fetch("/api/meetings").then(r => r.json()).then(data => setMeetings(data));
       }
     });
+  };
+
+  // Calendar event creation
+  const [showAddEventModal, setShowAddEventModal] = useState(false);
+  const [newEventTitle, setNewEventTitle] = useState("");
+  const [newEventDescription, setNewEventDescription] = useState("");
+  const [newEventStartTime, setNewEventStartTime] = useState("");
+  const [newEventTargetRole, setNewEventTargetRole] = useState<string>("student");
+
+  const handleCreateCalendarEvent = () => {
+    if (!currentUser || (currentUser.role !== "admin" && currentUser.role !== "co-admin")) {
+      alert("Bu əməliyyat üçün icazəniz yoxdur.");
+      return;
+    }
+    if (!newEventTitle || !newEventStartTime) {
+      alert("Başlıq və Başlama vaxtı boş ola bilməz.");
+      return;
+    }
+
+    const eventData = {
+      title: newEventTitle,
+      description: newEventDescription,
+      start_time: newEventStartTime,
+      type: "event", // Default type for now
+      target_role: newEventTargetRole,
+    };
+
+    fetch("/api/calendar", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(eventData)
+    }).then(res => {
+      if (res.ok) {
+        setShowAddEventModal(false);
+        setNewEventTitle("");
+        setNewEventDescription("");
+        setNewEventStartTime("");
+        setNewEventTargetRole("student");
+        fetch("/api/calendar").then(r => r.json()).then(data => setCalendarEvents(data));
+      } else {
+        alert("Tədbir əlavə edilərkən xəta baş verdi.");
+      }
+    });
+  };
+
+  // Chat group and message handling
+  const [selectedChatGroupId, setSelectedChatGroupId] = useState<number | null>(null);
+  const [newChatMessage, setNewChatMessage] = useState("");
+  const [showCreateGroupModal, setShowCreateGroupModal] = useState(false);
+  const [newGroupName, setNewGroupName] = useState("");
+
+  React.useEffect(() => {
+    if (selectedChatGroupId) {
+      fetch(`/api/chat-messages/${selectedChatGroupId}`)
+        .then(res => (res.ok ? res.json() : []))
+        .then(data => setChatMessages(data))
+        .catch(err => console.error("Failed to fetch chat messages:", err));
+    } else {
+      setChatMessages([]);
+    }
+  }, [selectedChatGroupId]);
+
+  const handleCreateChatGroup = () => {
+    // Logic for creating chat group
+  };
+
+  const handleSendChatMessage = () => {
+    // Logic for sending chat message
   };
 
   const handleLogout = () => {
@@ -446,6 +533,8 @@ export default function App() {
                   <div className="p-8 rounded-3xl bg-blue-600/5 border border-blue-500/20 space-y-4">
                     <div className="flex justify-between items-center">
                       <h2 className="text-xl font-bold text-slate-100">Tələbə İdarəetmə</h2>
+                      {/* Admin/Co-admin can create users */}
+                      {(currentUser?.role === "admin" || currentUser?.role === "co-admin") && (
                       <button 
                         onClick={() => setActiveTab("admin")}
                         className="px-4 py-2 bg-blue-600 text-white rounded-xl text-xs font-bold flex items-center gap-2"
@@ -453,6 +542,7 @@ export default function App() {
                         <Plus className="w-4 h-4" /> Yeni Tələbə Əlavə Et
                       </button>
                     </div>
+                    )}
                     <div className="grid grid-cols-1 gap-2">
                       {users.filter(u => u.role === "student").map(student => (
                         <div key={student.username} className="p-4 bg-slate-900/50 rounded-2xl flex justify-between items-center border border-slate-800">
@@ -460,12 +550,15 @@ export default function App() {
                             <div className="font-bold">{student.fullName}</div>
                             <div className="text-xs text-slate-500">@{student.username}</div>
                           </div>
-                          <button 
+                          {/* Admin/Co-admin can manage users */}
+                          {(currentUser?.role === "admin" || currentUser?.role === "co-admin") && (
+                          <button
                             onClick={() => setActiveTab("admin")}
                             className="text-xs text-blue-400 font-bold hover:underline"
                           >
                             Profilə bax / Redaktə et
                           </button>
+                          )}
                         </div>
                       ))}
                     </div>
@@ -574,9 +667,19 @@ export default function App() {
                     <div key={i} className="aspect-square bg-slate-900/50 border border-slate-800 rounded-xl p-2 hover:border-blue-500 transition-all cursor-pointer relative">
                       <span className="text-[10px] font-mono text-slate-500">{i + 1}</span>
                       {i === 14 && <div className="absolute bottom-2 left-2 right-2 h-1 bg-blue-500 rounded-full"></div>}
+                      {calendarEvents.filter((e: any) => new Date(e.start_time).getDate() === i + 1).map((event: any) => (
+                        <div key={event.id} className="text-[8px] bg-blue-500/20 text-blue-300 rounded-full px-1 mt-1 truncate">
+                          {event.title}
+                        </div>
+                      ))}
                     </div>
                   ))}
                 </div>
+                {calendarEvents.length === 0 && (
+                  <div className="text-center py-10 text-slate-500 text-sm">
+                    Hələ heç bir təqvim tədbiri yoxdur.
+                  </div>
+                )}
               </motion.div>
             )}
 
@@ -584,20 +687,55 @@ export default function App() {
             {activeTab === "chat" && (
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="grid grid-cols-1 md:grid-cols-4 gap-6 h-[600px]">
                 <div className="md:col-span-1 bg-slate-900/50 border border-slate-800 rounded-3xl p-4 overflow-y-auto">
-                  <h3 className="text-xs font-bold text-slate-500 uppercase mb-4 px-2">Qruplar</h3>
+                  <div className="flex justify-between items-center mb-4 px-2">
+                    <h3 className="text-xs font-bold text-slate-500 uppercase">Qruplar</h3>
+                    {(currentUser?.role === "admin" || currentUser?.role === "co-admin") && (
+                      <button onClick={() => setShowCreateGroupModal(true)} className="text-blue-400 hover:text-blue-300">
+                        <Plus className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
                   <div className="space-y-2">
-                    <div className="p-3 bg-blue-600 rounded-2xl text-xs font-bold flex items-center gap-2 cursor-pointer"><Users className="w-4 h-4" /> HSE Təlim Qrupu</div>
-                    <div className="p-3 hover:bg-slate-800 rounded-2xl text-xs font-bold flex items-center gap-2 cursor-pointer"><Users className="w-4 h-4" /> İşçi Heyəti</div>
+                    {chatGroups.map((group: any) => (
+                      <div 
+                        key={group.id} 
+                        onClick={() => setSelectedChatGroupId(group.id)}
+                        className={`p-3 rounded-2xl text-xs font-bold flex items-center gap-2 cursor-pointer ${selectedChatGroupId === group.id ? "bg-blue-600" : "hover:bg-slate-800"}`}
+                      >
+                        <Users className="w-4 h-4" /> {group.name}
+                      </div>
+                    ))}
+                    {chatGroups.length === 0 && (
+                      <div className="text-xs text-slate-500 text-center py-4">
+                        Hələ heç bir qrup yoxdur.
+                      </div>
+                    )}
                   </div>
                 </div>
                 <div className="md:col-span-3 bg-slate-900/50 border border-slate-800 rounded-3xl flex flex-col overflow-hidden">
-                  <div className="p-4 border-b border-slate-800 font-bold text-sm">HSE Təlim Qrupu</div>
+                  <div className="p-4 border-b border-slate-800 font-bold text-sm">
+                    {selectedChatGroupId ? chatGroups.find(g => g.id === selectedChatGroupId)?.name : "Qrup Seçin"}
+                  </div>
                   <div className="flex-1 p-6 overflow-y-auto space-y-4">
-                    <div className="max-w-[70%] bg-slate-800 p-3 rounded-2xl rounded-tl-none text-xs leading-relaxed">Salam komanda, növbəti təlim onlayn olacaq.</div>
+                    {chatMessages.map((msg: any) => (
+                      <div key={msg.id} className={`flex ${msg.sender === currentUser?.username ? "justify-end" : "justify-start"}`}>
+                        <div className={`max-w-[70%] p-3 rounded-2xl text-xs leading-relaxed ${
+                          msg.sender === currentUser?.username
+                            ? "bg-blue-600 text-white rounded-tr-none"
+                            : "bg-slate-800 text-slate-100 rounded-tl-none"
+                        }`}>
+                          <span className="font-bold block text-[10px] text-slate-400">{msg.sender}</span>
+                          {msg.text}
+                          <span className="block text-[8px] text-slate-500 text-right mt-1">{new Date(msg.timestamp).toLocaleTimeString()}</span>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                   <div className="p-4 bg-slate-950/50 flex gap-2">
-                    <input type="text" placeholder="Mesajınızı yazın..." className="flex-1 bg-slate-900 border border-slate-800 rounded-xl px-4 py-2 text-xs focus:outline-none focus:border-blue-500" />
-                    <button className="p-2 bg-blue-600 rounded-xl text-white"><Send className="w-4 h-4" /></button>
+                    <input type="text" placeholder="Mesajınızı yazın..." value={newChatMessage} onChange={(e) => setNewChatMessage(e.target.value)} className="flex-1 bg-slate-900 border border-slate-800 rounded-xl px-4 py-2 text-xs focus:outline-none focus:border-blue-500" />
+                    <button onClick={handleSendChatMessage} disabled={!selectedChatGroupId || !newChatMessage.trim()} className="p-2 bg-blue-600 rounded-xl text-white disabled:opacity-50 disabled:cursor-not-allowed">
+                      <Send className="w-4 h-4" />
+                    </button>
                   </div>
                 </div>
               </motion.div>
@@ -673,6 +811,123 @@ export default function App() {
                 <X className="w-6 h-6" />
               </button>
             </div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Add Event Modal */}
+      <AnimatePresence>
+        {showAddEventModal && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className={`w-full max-w-md p-6 rounded-3xl border ${
+                darkMode ? "bg-[#0b1226] border-slate-800 text-slate-100" : "bg-white border-slate-200 text-slate-900"
+              } shadow-2xl space-y-6 relative`}
+            >
+              <button
+                onClick={() => setShowAddEventModal(false)}
+                className="absolute top-4 right-4 text-slate-450 hover:text-slate-250 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+              <h3 className="text-lg font-extrabold tracking-tight">Yeni Təqvim Tədbiri Əlavə Et</h3>
+              <form onSubmit={(e) => { e.preventDefault(); handleCreateCalendarEvent(); }} className="space-y-4">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Başlıq</label>
+                  <input
+                    type="text"
+                    value={newEventTitle}
+                    onChange={(e) => setNewEventTitle(e.target.value)}
+                    className={`w-full p-3 rounded-xl text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none ${
+                      darkMode ? "bg-[#121f45] border-slate-800 text-slate-100" : "bg-slate-50 border-slate-200 text-slate-800"
+                    }`}
+                    required
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Təsvir</label>
+                  <textarea
+                    value={newEventDescription}
+                    onChange={(e) => setNewEventDescription(e.target.value)}
+                    className={`w-full p-3 rounded-xl text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none ${
+                      darkMode ? "bg-[#121f45] border-slate-800 text-slate-100" : "bg-slate-50 border-slate-200 text-slate-800"
+                    }`}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Başlama Vaxtı</label>
+                  <input
+                    type="datetime-local"
+                    value={newEventStartTime}
+                    onChange={(e) => setNewEventStartTime(e.target.value)}
+                    className={`w-full p-3 rounded-xl text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none ${
+                      darkMode ? "bg-[#121f45] border-slate-800 text-slate-100" : "bg-slate-50 border-slate-200 text-slate-800"
+                    }`}
+                    required
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Hədəf Rol</label>
+                  <select
+                    value={newEventTargetRole}
+                    onChange={(e) => setNewEventTargetRole(e.target.value)}
+                    className={`w-full p-3 rounded-xl text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none ${
+                      darkMode ? "bg-[#121f45] border-slate-800 text-slate-100" : "bg-slate-50 border-slate-200 text-slate-800"
+                    }`}
+                  >
+                    <option value="all">Hamı</option>
+                    <option value="student">Tələbə</option>
+                    <option value="worker">İşçi</option>
+                    <option value="corporate">Korporativ</option>
+                    <option value="admin">Admin</option>
+                    <option value="co-admin">Co-Admin</option>
+                  </select>
+                </div>
+                <button
+                  type="submit"
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition-all"
+                >
+                  Tədbiri Yarat
+                </button>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Add Chat Group Modal */}
+      <AnimatePresence>
+        {showCreateGroupModal && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className={`w-full max-w-md p-6 rounded-3xl border ${
+                darkMode ? "bg-[#0b1226] border-slate-800 text-slate-100" : "bg-white border-slate-200 text-slate-900"
+              } shadow-2xl space-y-6 relative`}
+            >
+              <button onClick={() => setShowCreateGroupModal(false)} className="absolute top-4 right-4 text-slate-450 hover:text-slate-250 transition-colors"><X className="w-5 h-5" /></button>
+              <h3 className="text-lg font-extrabold tracking-tight">Yeni Müzakirə Qrupu Yarat</h3>
+              <form onSubmit={(e) => { e.preventDefault(); handleCreateChatGroup(); }} className="space-y-4">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Qrup Adı</label>
+                  <input
+                    type="text"
+                    value={newGroupName}
+                    onChange={(e) => setNewGroupName(e.target.value)}
+                    className={`w-full p-3 rounded-xl text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none ${
+                      darkMode ? "bg-[#121f45] border-slate-800 text-slate-100" : "bg-slate-50 border-slate-200 text-slate-800"
+                    }`}
+                    required
+                  />
+                </div>
+                <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition-all">Qrup Yarat</button>
+              </form>
+            </motion.div>
           </div>
         )}
       </AnimatePresence>

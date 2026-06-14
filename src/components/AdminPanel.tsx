@@ -256,7 +256,7 @@ export default function AdminPanel({
       });
       setNewUsername("");
       setNewFullName("");
-      setNewRole("student");
+      setNewRole("student"); // Reset to default after successful creation
     } else {
       setMessage({
         type: "error",

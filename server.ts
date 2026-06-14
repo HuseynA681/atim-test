@@ -217,12 +217,49 @@ app.get("/api/chat-groups", async (req, res) => {
   }
 });
 
+// Chat API
+app.get("/api/chat-groups", async (req, res) => {
+  try {
+    const [rows] = await pool.query("SELECT * FROM chat_groups");
+    res.json(rows);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post("/api/chat-groups", async (req, res) => {
+  const { name, created_by } = req.body;
+  try {
+    await pool.query(
+      "INSERT INTO chat_groups (name, created_by) VALUES (?, ?)",
+      [name, created_by]
+    );
+    res.status(201).json({ message: "Chat group created" });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.get("/api/chat-messages/:groupId", async (req, res) => {
   const { groupId } = req.params;
   try {
     const [rows] = await pool.query("SELECT * FROM chat_messages WHERE group_id = ? ORDER BY timestamp ASC", [groupId]);
     res.json(rows);
   } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post("/api/chat-messages", async (req, res) => {
+  const { group_id, sender, text } = req.body;
+  try {
+    await pool.query(
+      "INSERT INTO chat_messages (group_id, sender, text) VALUES (?, ?, ?)",
+      [group_id, sender, text]
+    );
+    res.status(201).json({ message: "Message sent" });
+  } catch (err: any) {
+    console.error("Error sending chat message:", err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -249,14 +286,15 @@ app.post("/api/chat", async (req, res) => {
       systemInstruction: "Sən ATİM (Skills, Training & Certification Ecosystem) platformasının rəsmi süni intellekt köməkçisisən. İstifadəçilərin suallarına yalnız Azərbaycan dilində cavab ver. Təlim tövsiyələri ver, karyera inkişafı, sertifikatlaşdırma və imtahanlar barədə kömək et. Xoşrəftar, peşəkar, müasir və dolğun məlumat verən köməkçi ol. Cavablarında çox qısa olmamağa, həm də çox sıxıcı olmamağa çalış. Mövzu ATİM, təlimlər, peşəkar inkişaf olmalıdır."
     });
 
-    let fullPrompt = "";
-    if (history && history.length > 0) {
-      fullPrompt = history.map((h: any) => `${h.role === 'user' ? 'İstifadəçi' : 'Köməkçi'}: ${h.content}`).join("\n") + `\nİstifadəçi: ${message}\nKöməkçi:`;
-    } else {
-      fullPrompt = message;
-    }
+    // Format history for Gemini API
+    const chatHistory = history ? history.map((h: any) => ({
+      role: h.role === 'user' ? 'user' : 'model', // Ensure roles are 'user' or 'model'
+      parts: [{ text: h.text }] // Use h.text as per Message interface
+    })) : [];
 
-    const result = await model.generateContent(fullPrompt);
+    const requestContents = [...chatHistory, { role: "user", parts: [{ text: message }] }];
+
+    const result = await model.generateContent({ contents: requestContents });
     const response = await result.response;
 
     res.json({ text: response.text() });
