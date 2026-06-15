@@ -482,7 +482,7 @@ JSON formatı mütləq aşağıdakı kimi olmalıdır (buna tam riayət et):
       const parsed = JSON.parse(responseText || "[]");
       res.json({ questions: parsed });
     } catch (e) {
-      console.error("Failed to parse Cloudflare Workers AI response as JSON. Text was:", responseText);
+      console.error("Failed to parse Cloudflare response as JSON. Text was:", responseText);
       res.json({ // Keep generic error message
         questions: [
           {

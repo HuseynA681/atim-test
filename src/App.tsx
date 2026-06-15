@@ -773,7 +773,7 @@ export default function App() {
                 <AdminPanel
                   users={users}
                   onCreateUser={handleCreateUser}
-                  onDeleteCourse={handleDeleteUser}
+                  onDeleteUser={handleDeleteUser}
                   onResetPassword={handleResetPassword}
                   onSetPassword={handleUpdatePassword}
                   mentors={mentors}
