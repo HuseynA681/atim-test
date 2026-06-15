@@ -9,7 +9,7 @@ dotenv.config();
 const app = express();
 app.use(express.json());
 
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 
 // MySQL Connection Pool
 const pool = mysql.createPool({
@@ -96,11 +96,11 @@ async function initDb() {
 let aiClient: GoogleGenerativeAI | null = null;
 function getAiClient(): GoogleGenerativeAI {
   if (!aiClient) {
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
-      console.warn("GEMINI_API_KEY is missing! Gemini features will run in mock mode.");
+    const apiKey = process.env.GEMINI_API_KEY; // Get API key from environment
+    if (!apiKey) { // If key is missing, throw an error or handle mock mode explicitly
+      throw new Error("GEMINI_API_KEY is missing. AI features cannot be initialized.");
     }
-    aiClient = new GoogleGenerativeAI(apiKey || "MOCK_KEY");
+    aiClient = new GoogleGenerativeAI(apiKey); // Initialize with the actual API key
   }
   return aiClient;
 }
@@ -272,14 +272,13 @@ app.post("/api/chat", async (req, res) => {
       return res.status(400).json({ error: "Sual mətni daxil edilməlidir." });
     }
 
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
+    try {
+      const ai = getAiClient(); // This will now throw if API key is missing
+    } catch (e) {
       return res.json({
         text: `Salam! ATİM platformunun süni intellekt köməkçisiyəm. Hazırda sistem test rejimindədir və real API açarı təyin edilməyib, lakin mən sənə ATİM-in təlimləri, sertifikatlaşdırma, imtahanlar və mentorluq barədə ətraflı məlumat verə bilərəm. Məsələn, bizdə "Əməyin təhlükəsizliyi (HƏMƏ)", "Logistika və Anbar İdarəedilməsi", "Enerji və Energetika Mühəndisliyi", "Proqramlaşdırma və İT dərsləri" var. Biz həm fərdlərə, həm də şirkətlərə (korporativ partnyorlara) tərcüməli həllər təqdim edirik. Necə kömək edə bilərəm?`
       });
     }
-
-    const ai = getAiClient();
     
     const model = ai.getGenerativeModel({ 
       model: "gemini-1.5-flash",
@@ -328,8 +327,9 @@ Plan aşağıdakı bölmələrdən ibarət olmalıdır və mütləq Azərbaycan 
 
 Dizaynı gözəl göstərmək üçün cavabını səliqəli Markdown formatında (başlıqlar #, ##, siyahılar -, qalın mətnlər ** ilə) tərtib et.`;
 
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
+    try {
+      const ai = getAiClient(); // This will now throw if API key is missing
+    } catch (e) {
       return res.json({
         text: `# Fərdi İnkişaf Planı (TEST REJİMİ)
 Sistem test rejimindədir. Sizin üçün **${targetRole || 'Hədəf vəzifə'}** istiqamətində fərdi inkişaf planı:
@@ -355,8 +355,8 @@ Sistem test rejimindədir. Sizin üçün **${targetRole || 'Hədəf vəzifə'}**
 - **3-ci Ay:** Mövzu üzrə fərdi mentorluq sessiyası sifariş etmək, ATİM rəqəmsal sertifikatını LinkedIn-də paylaşaraq CV-ni karyera mərkəzində yeniləmək.`
       });
     }
-
-    const ai = getAiClient();
+    
+    const ai = getAiClient(); // Re-get client after potential mock response
     const model = getGenerativeModelWithSystemInstruction(ai, "Sən peşəkar İnsan Resursları və Karyera İnkişafı üzrə AI Mentorsan.");
     const result = await model.generateContent({
       contents: [{ role: "user", parts: [{ text: prompt }] }],
@@ -395,8 +395,9 @@ JSON formatı mütləq aşağıdakı kimi olmalıdır (buna tam riayət et):
 ]
 `;
 
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
+    try {
+      const ai = getAiClient(); // This will now throw if API key is missing
+    } catch (e) {
       return res.json({
         questions: [
           {
@@ -450,8 +451,8 @@ JSON formatı mütləq aşağıdakı kimi olmalıdır (buna tam riayət et):
         ]
       });
     }
-
-    const ai = getAiClient();
+    
+    const ai = getAiClient(); // Re-get client after potential mock response
     const model = getGenerativeModelWithSystemInstruction(ai, "Sən imtahan sualları hazırlayan AI mütəxəssisisən."); // Add a system instruction for exam generation
     const result = await model.generateContent({
       contents: [{ role: "user", parts: [{ text: prompt }] }],
@@ -513,8 +514,9 @@ Aşağıdakı bölmələrlə tamamilə Azərbaycan dilində, səliqəli Markdown
 
 Dizaynı gözəl göstərmək üçün cavabını səliqəli Markdown formatında (başlıqlar #, ##, siyahılar -, qalın mətnlər ** ilə) tərtib et.`;
 
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
+    try {
+      const ai = getAiClient(); // This will now throw if API key is missing
+    } catch (e) {
       return res.json({
         text: `# CV Təhlil Hesabatı (TEST REJİMİ)
 
@@ -541,8 +543,8 @@ Hazırda süni intellekt test rejimindədir. Sizin CV-nin hədəflənən **${tar
 - **Korporativ Kommunikasiya və Liderlik**`
       });
     }
-
-    const ai = getAiClient();
+    
+    const ai = getAiClient(); // Re-get client after potential mock response
     const model = getGenerativeModelWithSystemInstruction(ai, "Sən İnsan Resursları üzrə peşəkar ATS Analitiki və CV Audit mütəxəssisisən.");
     const result = await model.generateContent({
       contents: [{ role: "user", parts: [{ text: prompt }] }],
@@ -576,8 +578,8 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Server is running at http://0.0.0.0:${PORT}`);
+  app.listen(Number(PORT), "0.0.0.0", () => {
+    console.log(`Server is running at http://localhost:${PORT}`);
   });
 }
 
