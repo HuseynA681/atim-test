@@ -304,7 +304,7 @@ app.post("/api/chat", async (req, res) => {
     })) : [];
 
     const response = await callCloudflareWorkersAI(
-      "@cf/meta/llama-3-8b-instruct", // Using a common Llama model on Cloudflare Workers AI
+      "@cf/deepseek-ai/deepseek-v4-pro", // Updated model identifier for Cloudflare Workers AI
       [
         { role: "system", content: systemInstruction },
         ...chatHistory,
@@ -372,7 +372,7 @@ Sistem test rejimindədir. Sizin üçün **${targetRole || 'Hədəf vəzifə'}**
     }
     
     const response = await callCloudflareWorkersAI(
-      "@cf/meta/llama-3-8b-instruct",
+      "@cf/deepseek-ai/deepseek-v4-pro", // Updated model identifier
       [
         { role: "system", content: "Sən peşəkar İnsan Resursları və Karyera İnkişafı üzrə AI Mentorsan." },
         { role: "user", content: promptText }
@@ -469,7 +469,7 @@ JSON formatı mütləq aşağıdakı kimi olmalıdır (buna tam riayət et):
     }
     
     const response = await callCloudflareWorkersAI(
-      "@cf/meta/llama-3-8b-instruct",
+      "@cf/deepseek-ai/deepseek-v4-pro", // Updated model identifier
       [
         { role: "system", content: "Sən imtahan sualları hazırlayan AI mütəxəssisisən. Sən yalnız JSON formatında cavab verirsən." },
         { role: "user", content: promptText }
@@ -561,7 +561,7 @@ Hazırda süni intellekt test rejimindədir. Sizin CV-nin hədəflənən **${tar
     }
     
     const response = await callCloudflareWorkersAI(
-      "@cf/meta/llama-3-8b-instruct",
+      "@cf/deepseek-ai/deepseek-v4-pro", // Updated model identifier
       [
         { role: "system", content: "Sən İnsan Resursları üzrə peşəkar ATS Analitiki və CV Audit mütəxəssisisən." },
         { role: "user", content: promptText }
