@@ -83,7 +83,7 @@ async function initDb() {
     if (rows.length === 0) {
       await pool.query(
         "INSERT INTO users (username, fullName, role, password, createdAt) VALUES (?, ?, ?, ?, ?)",
-        ["admin", "Sistem Administratoru", "admin", "admin", new Date().toLocaleDateString("az-AZ")]
+        ["admin", "Emin Ağayev (Admin)", "easistemadmin", "Shusha2020", new Date().toLocaleDateString("az-AZ")]
       );
     }
     console.log("Database initialized successfully");
@@ -115,6 +115,25 @@ function getGenerativeModelWithSystemInstruction(aiClient: GoogleGenerativeAI, s
 // API Routes
 app.get("/api/health", (req, res) => {
   res.json({ status: "ok", time: new Date().toISOString() });
+});
+
+app.get("/api/about", (req, res) => {
+  res.json({
+    title: "Haqqımızda",
+    text: `# Haqqımızda
+
+**ATİM – Azərbaycan Təlim və İnnovasiya Mərkəzi** olaraq əsas məqsədimiz fərdlərin və təşkilatların peşəkar inkişafını dəstəkləmək, əmək bazarının tələblərinə uyğun bilik və bacarıqlar qazandırmaqdır.
+
+Mərkəzimiz sənaye, tikinti, enerji, logistika, əməyin mühafizəsi, texniki peşələr, idarəetmə və şəxsi inkişaf sahələrində müasir və beynəlxalq standartlara uyğun təlim proqramları təqdim edir. Təlimlərimiz nəzəri biliklərlə yanaşı praktiki bacarıqların formalaşdırılmasına yönəldilmişdir ki, iştirakçılar əldə etdikləri bilikləri iş mühitində effektiv şəkildə tətbiq edə bilsinlər.
+
+ATİM-in əsas üstünlüyü təcrübəli təlimçilər, innovativ tədris metodları və sənaye yönümlü proqramlardır. Biz işəgötürənlərin ehtiyaclarını, beynəlxalq tendensiyaları və texnoloji yenilikləri nəzərə alaraq təlim məzmunlarımızı daim yeniləyirik.
+
+Məqsədimiz yalnız sertifikat təqdim etmək deyil, iştirakçıların karyera inkişafına, peşəkar rəqabət qabiliyyətinin artırılmasına və təşkilatların insan kapitalının gücləndirilməsinə real töhfə verməkdir.
+
+ATİM fərdlər, şirkətlər, dövlət qurumları və təhsil müəssisələri ilə əməkdaşlıq edərək ömürboyu öyrənmə mədəniyyətinin inkişafına xidmət edir. Biz inanırıq ki, davamlı inkişafın əsasında keyfiyyətli təhsil, praktiki təcrübə və peşəkar yanaşma dayanır.
+
+**ATİM – bilikdən bacarığa, bacarıqdan uğura aparan yol.**`
+  });
 });
 
 // Database Routes for Users
@@ -217,16 +236,6 @@ app.get("/api/chat-groups", async (req, res) => {
   }
 });
 
-// Chat API
-app.get("/api/chat-groups", async (req, res) => {
-  try {
-    const [rows] = await pool.query("SELECT * FROM chat_groups");
-    res.json(rows);
-  } catch (err: any) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
 app.post("/api/chat-groups", async (req, res) => {
   const { name, created_by } = req.body;
   try {
@@ -272,15 +281,16 @@ app.post("/api/chat", async (req, res) => {
       return res.status(400).json({ error: "Sual mətni daxil edilməlidir." });
     }
 
+    let ai;
     try {
-      const ai = getAiClient(); // This will now throw if API key is missing
+      ai = getAiClient();
     } catch (e) {
       return res.json({
         text: `Salam! ATİM platformunun süni intellekt köməkçisiyəm. Hazırda sistem test rejimindədir və real API açarı təyin edilməyib, lakin mən sənə ATİM-in təlimləri, sertifikatlaşdırma, imtahanlar və mentorluq barədə ətraflı məlumat verə bilərəm. Məsələn, bizdə "Əməyin təhlükəsizliyi (HƏMƏ)", "Logistika və Anbar İdarəedilməsi", "Enerji və Energetika Mühəndisliyi", "Proqramlaşdırma və İT dərsləri" var. Biz həm fərdlərə, həm də şirkətlərə (korporativ partnyorlara) tərcüməli həllər təqdim edirik. Necə kömək edə bilərəm?`
       });
     }
-    
-    const model = ai.getGenerativeModel({ 
+
+    const model = ai.getGenerativeModel({
       model: "gemini-1.5-flash",
       systemInstruction: "Sən ATİM (Skills, Training & Certification Ecosystem) platformasının rəsmi süni intellekt köməkçisisən. İstifadəçilərin suallarına yalnız Azərbaycan dilində cavab ver. Təlim tövsiyələri ver, karyera inkişafı, sertifikatlaşdırma və imtahanlar barədə kömək et. Xoşrəftar, peşəkar, müasir və dolğun məlumat verən köməkçi ol. Cavablarında çox qısa olmamağa, həm də çox sıxıcı olmamağa çalış. Mövzu ATİM, təlimlər, peşəkar inkişaf olmalıdır."
     });
@@ -327,8 +337,9 @@ Plan aşağıdakı bölmələrdən ibarət olmalıdır və mütləq Azərbaycan 
 
 Dizaynı gözəl göstərmək üçün cavabını səliqəli Markdown formatında (başlıqlar #, ##, siyahılar -, qalın mətnlər ** ilə) tərtib et.`;
 
+    let ai;
     try {
-      const ai = getAiClient(); // This will now throw if API key is missing
+      ai = getAiClient();
     } catch (e) {
       return res.json({
         text: `# Fərdi İnkişaf Planı (TEST REJİMİ)
@@ -356,7 +367,6 @@ Sistem test rejimindədir. Sizin üçün **${targetRole || 'Hədəf vəzifə'}**
       });
     }
     
-    const ai = getAiClient(); // Re-get client after potential mock response
     const model = getGenerativeModelWithSystemInstruction(ai, "Sən peşəkar İnsan Resursları və Karyera İnkişafı üzrə AI Mentorsan.");
     const result = await model.generateContent({
       contents: [{ role: "user", parts: [{ text: prompt }] }],
@@ -395,8 +405,9 @@ JSON formatı mütləq aşağıdakı kimi olmalıdır (buna tam riayət et):
 ]
 `;
 
+    let ai;
     try {
-      const ai = getAiClient(); // This will now throw if API key is missing
+      ai = getAiClient();
     } catch (e) {
       return res.json({
         questions: [
@@ -452,7 +463,6 @@ JSON formatı mütləq aşağıdakı kimi olmalıdır (buna tam riayət et):
       });
     }
     
-    const ai = getAiClient(); // Re-get client after potential mock response
     const model = getGenerativeModelWithSystemInstruction(ai, "Sən imtahan sualları hazırlayan AI mütəxəssisisən."); // Add a system instruction for exam generation
     const result = await model.generateContent({
       contents: [{ role: "user", parts: [{ text: prompt }] }],
@@ -514,8 +524,9 @@ Aşağıdakı bölmələrlə tamamilə Azərbaycan dilində, səliqəli Markdown
 
 Dizaynı gözəl göstərmək üçün cavabını səliqəli Markdown formatında (başlıqlar #, ##, siyahılar -, qalın mətnlər ** ilə) tərtib et.`;
 
+    let ai;
     try {
-      const ai = getAiClient(); // This will now throw if API key is missing
+      ai = getAiClient();
     } catch (e) {
       return res.json({
         text: `# CV Təhlil Hesabatı (TEST REJİMİ)
@@ -544,7 +555,6 @@ Hazırda süni intellekt test rejimindədir. Sizin CV-nin hədəflənən **${tar
       });
     }
     
-    const ai = getAiClient(); // Re-get client after potential mock response
     const model = getGenerativeModelWithSystemInstruction(ai, "Sən İnsan Resursları üzrə peşəkar ATS Analitiki və CV Audit mütəxəssisisən.");
     const result = await model.generateContent({
       contents: [{ role: "user", parts: [{ text: prompt }] }],
