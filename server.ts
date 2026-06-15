@@ -1,8 +1,7 @@
 import express from "express";
 import path from "path";
-import { GoogleGenerativeAI } from "@google/generative-ai";
-import dotenv from "dotenv";
 import mysql from "mysql2/promise";
+import dotenv from "dotenv";
 
 dotenv.config();
 
@@ -83,7 +82,7 @@ async function initDb() {
     if (rows.length === 0) {
       await pool.query(
         "INSERT INTO users (username, fullName, role, password, createdAt) VALUES (?, ?, ?, ?, ?)",
-        ["admin", "Emin Ağayev (Admin)", "easistemadmin", "Shusha2020", new Date().toLocaleDateString("az-AZ")]
+        ["admin", "Emin Ağayev (Admin)", "admin", "Shusha2020", new Date().toLocaleDateString("az-AZ")]
       );
     }
     console.log("Database initialized successfully");
@@ -92,27 +91,36 @@ async function initDb() {
   }
 }
 
-// Initialize GoogleGenAI client (safe lazy setup)
-let aiClient: GoogleGenerativeAI | null = null;
-function getAiClient(): GoogleGenerativeAI {
-  if (!aiClient) {
-    const apiKey = process.env.GEMINI_API_KEY; // Get API key from environment
-    if (!apiKey) { // If key is missing, throw an error or handle mock mode explicitly
-      console.warn("GEMINI_API_KEY is missing in .env file. AI features will not function.");
-      throw new Error("GEMINI_API_KEY is missing. AI features cannot be initialized.");
+// Helper function for Cloudflare Workers AI API calls
+async function callCloudflareWorkersAI(model: string, messages: any[], options: any = {}) {
+  const apiToken = process.env.CLOUDFLARE_API_TOKEN;
+  const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
+
+  if (!apiToken) throw new Error("CLOUDFLARE_API_TOKEN is missing in .env file.");
+  if (!accountId) throw new Error("CLOUDFLARE_ACCOUNT_ID is missing in .env file.");
+
+  const response = await fetch(
+    `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run/${model}`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${apiToken}`
+      },
+      body: JSON.stringify({
+        messages,
+        ...options
+      })
     }
-    aiClient = new GoogleGenerativeAI(apiKey); // Initialize with the actual API key
+  );
+
+  if (!response.ok) {
+    const errorData = await response.json(); // Cloudflare usually returns JSON errors
+    throw new Error(`Cloudflare Workers AI API error: ${response.status} - ${JSON.stringify(errorData)}`);
   }
-  return aiClient;
+  return response.json();
 }
 
-// Helper to get generative model with system instruction
-function getGenerativeModelWithSystemInstruction(aiClient: GoogleGenerativeAI, systemInstruction: string) {
-  return aiClient.getGenerativeModel({
-    model: "gemini-1.5-flash", // Use gemini-1.5-flash
-    systemInstruction: systemInstruction,
-  });
-}
 // API Routes
 app.get("/api/health", (req, res) => {
   res.json({ status: "ok", time: new Date().toISOString() });
@@ -282,35 +290,33 @@ app.post("/api/chat", async (req, res) => {
       return res.status(400).json({ error: "Sual mətni daxil edilməlidir." });
     }
 
-    let ai;
-    try {
-      ai = getAiClient();
-    } catch (e) {
+    if (!process.env.CLOUDFLARE_API_TOKEN || !process.env.CLOUDFLARE_ACCOUNT_ID) {
       return res.json({
         text: `Salam! ATİM platformunun süni intellekt köməkçisiyəm. Hazırda sistem test rejimindədir və real API açarı təyin edilməyib, lakin mən sənə ATİM-in təlimləri, sertifikatlaşdırma, imtahanlar və mentorluq barədə ətraflı məlumat verə bilərəm. Məsələn, bizdə "Əməyin təhlükəsizliyi (HƏMƏ)", "Logistika və Anbar İdarəedilməsi", "Enerji və Energetika Mühəndisliyi", "Proqramlaşdırma və İT dərsləri" var. Biz həm fərdlərə, həm də şirkətlərə (korporativ partnyorlara) tərcüməli həllər təqdim edirik. Necə kömək edə bilərəm?`
       });
     }
 
-    const model = ai.getGenerativeModel({
-      model: "gemini-1.5-flash",
-      systemInstruction: "Sən ATİM (Skills, Training & Certification Ecosystem) platformasının rəsmi süni intellekt köməkçisisən. İstifadəçilərin suallarına yalnız Azərbaycan dilində cavab ver. Təlim tövsiyələri ver, karyera inkişafı, sertifikatlaşdırma və imtahanlar barədə kömək et. Xoşrəftar, peşəkar, müasir və dolğun məlumat verən köməkçi ol. Cavablarında çox qısa olmamağa, həm də çox sıxıcı olmamağa çalış. Mövzu ATİM, təlimlər, peşəkar inkişaf olmalıdır."
-    });
+    const systemInstruction = "Sən ATİM (Skills, Training & Certification Ecosystem) platformasının rəsmi süni intellekt köməkçisisən. İstifadəçilərin suallarına yalnız Azərbaycan dilində cavab ver. Təlim tövsiyələri ver, karyera inkişafı, sertifikatlaşdırma və imtahanlar barədə kömək et. Xoşrəftar, peşəkar, müasir və dolğun məlumat verən köməkçi ol. Cavablarında çox qısa olmamağa, həm də çox sıxıcı olmamağa çalış. Mövzu ATİM, təlimlər, peşəkar inkişaf olmalıdır.";
 
-    // Format history for Gemini API
-    const chatHistory = history ? history.map((h: any) => ({
-      role: h.role === 'user' ? 'user' : 'model', // Ensure roles are 'user' or 'model'
-      parts: [{ text: h.content || h.text || "" }] // Fix: handle both 'content' and 'text'
+    let chatHistory = history ? history.map((h: any) => ({
+      role: h.role === 'user' ? 'user' : 'assistant',
+      content: h.content || h.text || ""
     })) : [];
 
-    const requestContents = [...chatHistory, { role: "user", parts: [{ text: message }] }];
-
-    const result = await model.generateContent({ contents: requestContents });
-    const response = await result.response;
-
-    res.json({ text: response.text() });
+    const response = await callCloudflareWorkersAI(
+      "@cf/meta/llama-3-8b-instruct", // Using a common Llama model on Cloudflare Workers AI
+      [
+        { role: "system", content: systemInstruction },
+        ...chatHistory,
+        { role: "user", content: message }
+      ],
+      { max_tokens: 1024 }
+    );
+    const responseText = response.result.response || "";
+    res.json({ text: responseText });
   } catch (error: any) {
-    console.error("Gemini API Error in /api/chat:", error);
-    res.status(500).json({ error: error.message || "Süni İntellektlə əlaqə zamanı xəta yarandı." });
+    console.error("Cloudflare Workers AI Error in /api/chat:", error);
+    res.status(500).json({ error: error.message || "Süni İntellektlə əlaqə zamanı xəta yarandı." }); // Keep generic error message
   }
 });
 
@@ -319,7 +325,7 @@ app.post("/api/development-plan", async (req, res) => {
   try {
     const { name, industry, currentRole, targetRole, skills, duration } = req.body;
     
-    const prompt = `YENİ FƏRDİ İNKİŞAF PLANI TƏLƏBİ:
+    const promptText = `YENİ FƏRDİ İNKİŞAF PLANI TƏLƏBİ:
 Adı: ${name || 'İstifadəçi'}
 Sahə/Sektor: ${industry || 'Ümumi'}
 Hazırkı Vəzifə: ${currentRole || 'İlkin səviyyə mütəxəssis'}
@@ -338,10 +344,7 @@ Plan aşağıdakı bölmələrdən ibarət olmalıdır və mütləq Azərbaycan 
 
 Dizaynı gözəl göstərmək üçün cavabını səliqəli Markdown formatında (başlıqlar #, ##, siyahılar -, qalın mətnlər ** ilə) tərtib et.`;
 
-    let ai;
-    try {
-      ai = getAiClient();
-    } catch (e) {
+    if (!process.env.CLOUDFLARE_API_TOKEN || !process.env.CLOUDFLARE_ACCOUNT_ID) {
       return res.json({
         text: `# Fərdi İnkişaf Planı (TEST REJİMİ)
 Sistem test rejimindədir. Sizin üçün **${targetRole || 'Hədəf vəzifə'}** istiqamətində fərdi inkişaf planı:
@@ -368,17 +371,20 @@ Sistem test rejimindədir. Sizin üçün **${targetRole || 'Hədəf vəzifə'}**
       });
     }
     
-    const model = getGenerativeModelWithSystemInstruction(ai, "Sən peşəkar İnsan Resursları və Karyera İnkişafı üzrə AI Mentorsan.");
-    const result = await model.generateContent({
-      contents: [{ role: "user", parts: [{ text: prompt }] }],
-      generationConfig: { temperature: 0.7 }
-    });
-    const response = await result.response;
+    const response = await callCloudflareWorkersAI(
+      "@cf/meta/llama-3-8b-instruct",
+      [
+        { role: "system", content: "Sən peşəkar İnsan Resursları və Karyera İnkişafı üzrə AI Mentorsan." },
+        { role: "user", content: promptText }
+      ],
+      { max_tokens: 1024, temperature: 0.7 }
+    );
 
-    res.json({ text: response.text() });
+    const responseText = response.result.response || "";
+    res.json({ text: responseText });
   } catch (error: any) {
-    console.error("Gemini API Error in /api/development-plan:", error);
-    res.status(500).json({ error: error.message || "Fərdi inkişaf planı hazırlanan zaman xəta yarandı." });
+    console.error("Cloudflare Workers AI Error in /api/development-plan:", error);
+    res.status(500).json({ error: error.message || "Fərdi inkişaf planı hazırlanan zaman xəta yarandı." }); // Keep generic error message
   }
 });
 
@@ -387,7 +393,7 @@ app.post("/api/generate-exam", async (req, res) => {
   try {
     const { category, courseName, difficulty } = req.body;
     
-    const prompt = `YENİ İMTAHAN SUALLARI TƏLƏBİ:
+    const promptText = `YENİ İMTAHAN SUALLARI TƏLƏBİ:
 Kursun adı: ${courseName || category}
 Kateqoriya: ${category}
 Çətinlik dərəcəsi: ${difficulty || 'Orta'}
@@ -406,15 +412,13 @@ JSON formatı mütləq aşağıdakı kimi olmalıdır (buna tam riayət et):
 ]
 `;
 
-    let ai;
-    try {
-      ai = getAiClient();
-    } catch (e) {
+    if (!process.env.CLOUDFLARE_API_TOKEN || !process.env.CLOUDFLARE_ACCOUNT_ID) {
       return res.json({
         questions: [
           {
             id: 1,
             question: `${courseName || category} sahəsində əsas təhlükəsizlik qaydalarının (Məsuliyyət və Risk menecmenti) tətbiqində birinci növbədə nəyə diqqət yetirilməlidir?`,
+// ... (rest of mock response)
             options: [
               "Risk dərəcələrinin müəyyənləşdirilməsi və preventiv tədbirlər",
               "Sənədlərin arxivləşdirilməsi",
@@ -464,19 +468,22 @@ JSON formatı mütləq aşağıdakı kimi olmalıdır (buna tam riayət et):
       });
     }
     
-    const model = getGenerativeModelWithSystemInstruction(ai, "Sən imtahan sualları hazırlayan AI mütəxəssisisən."); // Add a system instruction for exam generation
-    const result = await model.generateContent({
-      contents: [{ role: "user", parts: [{ text: prompt }] }],
-      generationConfig: { responseMimeType: "application/json", temperature: 0.6 }
-    });
+    const response = await callCloudflareWorkersAI(
+      "@cf/meta/llama-3-8b-instruct",
+      [
+        { role: "system", content: "Sən imtahan sualları hazırlayan AI mütəxəssisisən. Sən yalnız JSON formatında cavab verirsən." },
+        { role: "user", content: promptText }
+      ],
+      { max_tokens: 1024, temperature: 0.6 }
+    );
 
-    const response = await result.response;
+    const responseText = response.result.response || "";
     try {
-      const parsed = JSON.parse(response.text() || "[]");
+      const parsed = JSON.parse(responseText || "[]");
       res.json({ questions: parsed });
     } catch (e) {
-      console.error("Failed to parse Gemini response as JSON. Text was:", response.text());
-      res.json({
+      console.error("Failed to parse Cloudflare Workers AI response as JSON. Text was:", responseText);
+      res.json({ // Keep generic error message
         questions: [
           {
             id: 1,
@@ -494,8 +501,8 @@ JSON formatı mütləq aşağıdakı kimi olmalıdır (buna tam riayət et):
       });
     }
   } catch (error: any) {
-    console.error("Gemini API Error in /api/generate-exam:", error);
-    res.status(500).json({ error: error.message || "İmtahan sualları yaradılan zaman xəta yarandı." });
+    console.error("Cloudflare Workers AI Error in /api/generate-exam:", error);
+    res.status(500).json({ error: error.message || "İmtahan sualları yaradılan zaman xəta yarandı." }); // Keep generic error message
   }
 });
 
@@ -507,7 +514,7 @@ app.post("/api/analyze-cv", async (req, res) => {
       return res.status(400).json({ error: "CV mətni daxil edilməlidir." });
     }
 
-    const prompt = `YENİ CV ANALİZİ TƏLƏBİ:
+    const promptText = `YENİ CV ANALİZİ TƏLƏBİ:
 Hədəflənən Vəzifə/Sahə: ${targetRole || 'Müvafiq Vakansiya'}
 CV Mətni:
 """
@@ -525,10 +532,7 @@ Aşağıdakı bölmələrlə tamamilə Azərbaycan dilində, səliqəli Markdown
 
 Dizaynı gözəl göstərmək üçün cavabını səliqəli Markdown formatında (başlıqlar #, ##, siyahılar -, qalın mətnlər ** ilə) tərtib et.`;
 
-    let ai;
-    try {
-      ai = getAiClient();
-    } catch (e) {
+    if (!process.env.CLOUDFLARE_API_TOKEN || !process.env.CLOUDFLARE_ACCOUNT_ID) {
       return res.json({
         text: `# CV Təhlil Hesabatı (TEST REJİMİ)
 
@@ -556,17 +560,20 @@ Hazırda süni intellekt test rejimindədir. Sizin CV-nin hədəflənən **${tar
       });
     }
     
-    const model = getGenerativeModelWithSystemInstruction(ai, "Sən İnsan Resursları üzrə peşəkar ATS Analitiki və CV Audit mütəxəssisisən.");
-    const result = await model.generateContent({
-      contents: [{ role: "user", parts: [{ text: prompt }] }],
-      generationConfig: { temperature: 0.7 }
-    });
-    const response = await result.response;
+    const response = await callCloudflareWorkersAI(
+      "@cf/meta/llama-3-8b-instruct",
+      [
+        { role: "system", content: "Sən İnsan Resursları üzrə peşəkar ATS Analitiki və CV Audit mütəxəssisisən." },
+        { role: "user", content: promptText }
+      ],
+      { max_tokens: 2048, temperature: 0.7 }
+    );
 
-    res.json({ text: response.text() });
+    const responseText = response.result.response || "";
+    res.json({ text: responseText });
   } catch (error: any) {
-    console.error("Gemini API Error in /api/analyze-cv:", error);
-    res.status(500).json({ error: error.message || "CV analizi zamanı xəta yarandı." });
+    console.error("Cloudflare Workers AI Error in /api/analyze-cv:", error);
+    res.status(500).json({ error: error.message || "CV analizi zamanı xəta yarandı." }); // Keep generic error message
   }
 });
 

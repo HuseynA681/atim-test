@@ -1,4 +1,5 @@
 export interface Course {
+  [x: string]: ReactNode;
   id: string;
   title: string;
   description: string;
