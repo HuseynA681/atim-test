@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Menu, X, BookOpen, Briefcase, Award, Users, Building, GraduationCap, Sun, Moon, LogOut, User as UserIcon, Settings, CheckCircle, Calendar, MessageSquare, Video } from "lucide-react";
+import { Menu, X, BookOpen, Briefcase, Award, Users, Building, GraduationCap, Sun, Moon, LogOut, User as UserIcon, Settings, CheckCircle, Calendar, MessageSquare, Video, Info } from "lucide-react";
 import { User } from "../types"; // Assuming types.ts is in the parent directory
 import AtimLogo from "./AtimLogo";
 
@@ -31,6 +31,7 @@ export default function Navbar({
     { id: "worker-section", label: "Görüşlər", icon: Video, roles: ["admin", "worker"] },
     { id: "calendar", label: "Təqvim", icon: Calendar, roles: ["admin", "co-admin", "student", "worker", "corporate"] },
     { id: "chat", label: "Müzakirə", icon: MessageSquare, roles: ["admin", "co-admin", "student", "worker", "corporate"] },
+    { id: "about", label: "Haqqımızda", icon: Info, roles: ["admin", "co-admin", "student", "corporate", "worker", null] },
     { id: "admin", label: "Admin", icon: Settings, roles: ["admin", "co-admin"] },
   ];
 

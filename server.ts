@@ -98,6 +98,7 @@ function getAiClient(): GoogleGenerativeAI {
   if (!aiClient) {
     const apiKey = process.env.GEMINI_API_KEY; // Get API key from environment
     if (!apiKey) { // If key is missing, throw an error or handle mock mode explicitly
+      console.warn("GEMINI_API_KEY is missing in .env file. AI features will not function.");
       throw new Error("GEMINI_API_KEY is missing. AI features cannot be initialized.");
     }
     aiClient = new GoogleGenerativeAI(apiKey); // Initialize with the actual API key
@@ -298,7 +299,7 @@ app.post("/api/chat", async (req, res) => {
     // Format history for Gemini API
     const chatHistory = history ? history.map((h: any) => ({
       role: h.role === 'user' ? 'user' : 'model', // Ensure roles are 'user' or 'model'
-      parts: [{ text: h.text }] // Use h.text as per Message interface
+      parts: [{ text: h.content || h.text || "" }] // Fix: handle both 'content' and 'text'
     })) : [];
 
     const requestContents = [...chatHistory, { role: "user", parts: [{ text: message }] }];

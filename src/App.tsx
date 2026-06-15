@@ -10,6 +10,7 @@ import Career from "./components/Career";
 import AdminPanel from "./components/AdminPanel";
 import AIChatBot from "./components/AIChatBot";
 import Login from "./components/Login";
+import About from "./components/About"; // Import the new About component
 
 import { SEEDED_COURSES, SEEDED_MENTORS, CORPORATE_INITIAL_EMPLOYEES, SEEDED_JOBS } from "./data";
 import { Course, Certificate, User, Mentor, CourseApplication } from "./types";
